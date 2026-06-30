@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müzik Öneri Sistemi</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        :root {
+            --spotify-green: #1DB954;
+            --dark-bg: #121212;
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background-attachment: fixed;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--spotify-green);
+        }
+
+        .artist-big-card {
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(0,0,0,0.4));
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            transition: all 0.3s;
+        }
+
+        .artist-big-card:hover {
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.3), rgba(0,0,0,0.6));
+            border-color: var(--spotify-green);
+            box-shadow: 0 5px 15px rgba(29, 185, 84, 0.2);
+        }
+
+        .btn-spotify {
+            background-color: var(--spotify-green);
+            color: white;
+            font-weight: bold;
+            border-radius: 30px;
+            padding: 10px 25px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+        }
+
+        .btn-spotify:hover {
+            background-color: #1ed760;
+            box-shadow: 0 0 15px rgba(29, 185, 84, 0.4);
+        }
+
+        .track-img {
+            object-fit: cover;
+            height: 200px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .search-container {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 50px;
+        }
+
+        audio {
+            height: 30px;
+            filter: invert(100%) hue-rotate(180deg) brightness(1.5);
+        }
+
+        .alert-custom {
+            background: rgba(233, 30, 99, 0.2);
+            color: #ff85a1;
+            border: 1px solid #e91e63;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold">🎵 Müzik <span style="color: var(--spotify-green);">Kaşifi</span></h1>
+        <p class="lead text-secondary">Yapay zeka ve kontrollü popülerlik analizi ile keşfe çık.</p>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-custom text-center mb-4">{{ error }}</div>
+    {% endif %}
+
+    <div class="search-container shadow-lg">
+        <form method="POST">
+            <div class="input-group mb-3">
+                <input type="text" name="song_name" value="{{ query }}" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="Şarkı veya Sanatçı adı yazın..." required>
+                <button type="submit" class="btn btn-spotify">Ara</button>
+            </div>
+            <div>
+                <label class="me-3">
+                    <input type="radio" name="search_mode" value="song" {% if mode == 'song' %}checked{% endif %}> Şarkıya Göre Öneri Al
+                </label>
+                <label>
+                    <input type="radio" name="search_mode" value="artist" {% if mode == 'artist' %}checked{% endif %}> Doğrudan Sanatçı Ara
+                </label>
+            </div>
+        </form>
+    </div>
+
+    {% if mode == 'artist' and artists_data %}
+        <h3 class="mb-4 text-secondary">'{{ query }}' İçin Bulunan Sanatçılar</h3>
+        <div class="row">
+            {% for artist, songs in artists_data.items() %}
+                <div class="col-12 mb-3">
+                    <div class="artist-big-card p-4 d-flex justify-content-between align-items-center shadow"
+                         data-bs-toggle="collapse"
+                         data-bs-target="#artistCollapse_{{ loop.index }}"
+                         aria-expanded="false">
+                        <div>
+                            <h3 class="fw-bold mb-1">🎤 {{ artist }}</h3>
+                            <p class="text-muted small mb-0">Veritabanında bu sanatçıya ait <b>{{ songs|length }}</b> şarkı listeleniyor.</p>
+                        </div>
+                        <span class="badge bg-success p-2">Şarkıları Göster</span>
+                    </div>
+
+                    <div class="collapse mt-3 mb-4" id="artistCollapse_{{ loop.index }}">
+                        <div class="p-3 border border-secondary border-opacity-25 rounded bg-black bg-opacity-10">
+                            <h5 class="text-info mb-4">{{ artist }} Şarkıları</h5>
+                            <div class="row">
+                                {% for item in songs %}
+                                <div class="col-lg-4 col-md-6 mb-4">
+                                    <div class="glass-card p-4 h-100 shadow">
+                                        <a href="{{ item.spotify_link }}" target="_blank">
+                                            <img src="{{ item.image }}" class="card-img-top track-img w-100" alt="{{ item.name }}">
+                                        </a>
+                                        <div class="text-center">
+                                            <h5 class="fw-bold text-truncate mb-1">{{ item.name }}</h5>
+                                            <p class="text-info mb-3 small">{{ item.artist }}</p>
+
+                                            {% if item.preview %}
+                                                <div class="mt-2 bg-black bg-opacity-25 p-2 rounded">
+                                                    <audio controls class="w-100">
+                                                        <source src="{{ item.preview }}" type="audio/mpeg">
+                                                    </audio>
+                                                </div>
+                                            {% else %}
+                                                <div class="mt-2 py-2 border border-secondary border-dashed rounded">
+                                                    <small class="text-muted">🔇 Önizleme Kısıtlı</small>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if mode == 'song' and recs %}
+        <h3 class="mb-4 pb-2 border-bottom border-secondary">'{{ query }}' İçin Benzerlik Analizi</h3>
+        <div class="row">
+            {% for item in recs %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="glass-card p-4 h-100 shadow">
+                    <a href="{{ item.spotify_link }}" target="_blank">
+                        <img src="{{ item.image }}" class="card-img-top track-img w-100" alt="{{ item.name }}">
+                    </a>
+                    <div class="text-center">
+                        <h5 class="fw-bold text-truncate mb-1">{{ item.name }}</h5>
+                        <p class="text-info mb-3 small">{{ item.artist }}</p>
+
+                        {% if item.preview %}
+                            <div class="mt-2 bg-black bg-opacity-25 p-2 rounded">
+                                <audio controls class="w-100">
+                                    <source src="{{ item.preview }}" type="audio/mpeg">
+                                </audio>
+                            </div>
+                        {% else %}
+                            <div class="mt-2 py-2 border border-secondary border-dashed rounded">
+                                <small class="text-muted">🔇 Önizleme Kısıtlı</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
